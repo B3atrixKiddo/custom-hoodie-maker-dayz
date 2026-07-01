@@ -46,7 +46,36 @@ MOD_ROOT = os.path.join(HERE, MOD_NAME)
 MOD_DATA = os.path.join(MOD_ROOT, "data")
 CARGO_X = 10
 CARGO_Y = 5
+DEFAULT_PLACEMENT = {
+    "back": [0.065455, 0.169091, 0.240909, 0.56],
+    "front": [0.5, 0.22, 0.555455, 0.338182],
+    "back_rotate": 7.0,
+    "front_rotate": 0.0,
+}
+GARMENTS = {
+    # Optional overrides only. Any base file in bases\ that is NOT listed here
+    # gets an auto-generated class inheriting Hoodie_Black (see default_garment).
+    # Add an entry only when a garment needs a different parent class / addon,
+    # },
+}
 
+def default_garment(stem):
+    """
+    Fallback for any base file not explicitly listed in GARMENTS.
+    Every dropped-in base gets a class automatically. Parent defaults to the
+    vanilla hoodie, which is a safe, dependency-free base that any retexture
+    will at least load on. Override per-file in GARMENTS if a garment needs a
+    different parent (e.g. a jacket from another mod).
+    """
+    cls = "BK_" + "".join(p.capitalize() for p in stem.split("_"))
+    display = stem.replace("_", " ").title()
+    return {
+        "parent": "Hoodie_Black",
+        "classname": cls,
+        "display": display,
+        "addons": ["DZ_Characters_Tops"],
+    }
+    
 DEFAULT_SETTINGS = {"hoodie_color": [18, 19, 20, 255]}
 
 IMAGETOPAA_CANDIDATES = [
@@ -67,41 +96,79 @@ def ensure_dirs():
     os.makedirs(MOD_DATA, exist_ok=True)
 
 
-def write_config():
+def write_config(files=None):
     ensure_dirs()
-    config = f'''class CfgPatches
-{{
-    class {MOD_NAME}
-    {{
-        units[] = {{"{CLASSNAME}"}};
-        weapons[] = {{}};
-        requiredVersion = 0.1;
-        requiredAddons[] = {{"DZ_Data", "DZ_Characters_Tops"}};
-    }};
-}};
+    if files is None:
+        files = texture_files()
 
-class CfgVehicles
-{{
-    class Hoodie_Black;
+    # Unique base stems, in stable order.
+    stems = []
+    for f in files:
+        s = clean_source_stem(f)
+        if s not in stems:
+            stems.append(s)
 
-    class {CLASSNAME} : Hoodie_Black
-    {{
-        scope = 2;
-        displayName = "{DISPLAY_NAME}";
-        descriptionShort = "{DESCRIPTION}";
-        itemsCargoSize[] = {{{CARGO_X}, {CARGO_Y}}};
+    garments = []
+    for s in stems:
+        g = dict(GARMENTS[s]) if s in GARMENTS else default_garment(s)
+        garments.append((g, s))
 
-        // Vanilla hoodie hiddenSelections order:
-        // male texture, female texture, ground/inventory texture.
-        hiddenSelectionsTextures[] =
-        {{
-            "{MOD_NAME}\\data\\bk_hoodie_m_co.paa",
-            "{MOD_NAME}\\data\\bk_hoodie_f_co.paa",
-            "\\dz\\characters\\tops\\data\\hoodie_m_grd_black_co.paa"
-        }};
-    }};
-}};
-'''
+    classnames = [g["classname"] for g, _ in garments]
+
+    parents = []
+    for g, _ in garments:
+        if g["parent"] not in parents:
+            parents.append(g["parent"])
+
+    addons = ["DZ_Data"]
+    for g, _ in garments:
+        for a in g.get("addons", []):
+            if a not in addons:
+                addons.append(a)
+
+    units_str = ", ".join(f'"{c}"' for c in classnames)
+    addons_str = ", ".join(f'"{a}"' for a in addons)
+
+    lines = []
+    lines.append("class CfgPatches")
+    lines.append("{")
+    lines.append(f"    class {MOD_NAME}")
+    lines.append("    {")
+    lines.append(f"        units[] = {{{units_str}}};")
+    lines.append("        weapons[] = {};")
+    lines.append("        requiredVersion = 0.1;")
+    lines.append(f"        requiredAddons[] = {{{addons_str}}};")
+    lines.append("    };")
+    lines.append("};")
+    lines.append("")
+    lines.append("class CfgVehicles")
+    lines.append("{")
+    for p in parents:
+        lines.append(f"    class {p};")
+    lines.append("")
+
+    for g, stem in garments:
+        ground = g.get("ground", r"\dz\characters\tops\data\hoodie_m_grd_black_co.paa")
+        male = f"{MOD_NAME}\\data\\{stem}_m_co.paa"
+        female = f"{MOD_NAME}\\data\\{stem}_f_co.paa"
+        lines.append(f'    class {g["classname"]} : {g["parent"]}')
+        lines.append("    {")
+        lines.append("        scope = 2;")
+        lines.append(f'        displayName = "{g["display"]}";')
+        lines.append(f'        descriptionShort = "{DESCRIPTION}";')
+        lines.append(f"        itemsCargoSize[] = {{{CARGO_X}, {CARGO_Y}}};")
+        lines.append("        hiddenSelectionsTextures[] =")
+        lines.append("        {")
+        lines.append(f'            "{male}",')
+        lines.append(f'            "{female}",')
+        lines.append(f'            "{ground}"')
+        lines.append("        };")
+        lines.append("    };")
+        lines.append("")
+
+    lines.append("};")
+    config = "\n".join(lines) + "\n"
+
     path = os.path.join(MOD_ROOT, "config.cpp")
     with open(path, "w", encoding="utf-8", newline="\n") as f:
         f.write(config)
@@ -437,6 +504,27 @@ def reset_hoodie_color():
     print("\nHoodie resetted to its default texure.")
 
 
+def reset_logo_rotation():
+    if not os.path.isfile(PLACEMENTS_FILE):
+        print("\nNo saved placement to reset rotation on.")
+        return
+    try:
+        with open(PLACEMENTS_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        print("\nCould not read placements.json.")
+        return
+    placement = data.get("shared")
+    if not placement:
+        print("\nNo saved placement to reset rotation on.")
+        return
+    placement["back_rotate"] = 0.0
+    placement["front_rotate"] = 0.0
+    with open(PLACEMENTS_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2)
+    print("\nLogo rotation reset to 0 (back and front).")
+    
+    
 def find_imagetopaa():
     for path in IMAGETOPAA_CANDIDATES:
         if os.path.isfile(path):
@@ -519,18 +607,18 @@ def load_base(path):
 
 def load_shared():
     if not os.path.isfile(PLACEMENTS_FILE):
-        return None
+        return dict(DEFAULT_PLACEMENT)
     try:
         with open(PLACEMENTS_FILE, "r", encoding="utf-8") as f:
             data = json.load(f)
         placement = data.get("shared")
         if not placement or "back" not in placement or "front" not in placement:
-            return None
+            return dict(DEFAULT_PLACEMENT)
         placement.setdefault("back_rotate", 0)
         placement.setdefault("front_rotate", 0)
         return placement
     except Exception:
-        return None
+        return dict(DEFAULT_PLACEMENT)
 
 
 def save_shared(placement, sample_name):
@@ -1141,6 +1229,7 @@ class CustomHoodieGUI:
         self.add_separator(left)
         self.add_button(left, "Choose Hoodie Color", self.run_choose_color)
         self.add_button(left, "Reset To Base Texture", self.run_reset_color)
+        self.add_button(left, "Reset Logo Rotation", self.run_reset_rotation)
         self.add_separator(left)
         self.add_button(left, "Reset Saved Placement", self.run_reset_placement)
         self.add_button(left, "Open Mod Data Folder", lambda: self.open_folder(MOD_DATA))
@@ -1227,6 +1316,11 @@ class CustomHoodieGUI:
     def run_reset_color(self):
         print("\n=== Reset To Base Texture ===")
         reset_hoodie_color()
+        self.refresh_status()
+
+    def run_reset_rotation(self):
+        print("\n=== Reset Logo Rotation ===")
+        reset_logo_rotation()
         self.refresh_status()
 
     def run_reset_placement(self):

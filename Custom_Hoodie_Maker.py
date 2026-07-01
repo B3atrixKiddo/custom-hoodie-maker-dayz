@@ -505,24 +505,8 @@ def reset_hoodie_color():
 
 
 def reset_logo_rotation():
-    if not os.path.isfile(PLACEMENTS_FILE):
-        print("\nNo saved placement to reset rotation on.")
-        return
-    try:
-        with open(PLACEMENTS_FILE, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception:
-        print("\nCould not read placements.json.")
-        return
-    placement = data.get("shared")
-    if not placement:
-        print("\nNo saved placement to reset rotation on.")
-        return
-    placement["back_rotate"] = 0.0
-    placement["front_rotate"] = 0.0
-    with open(PLACEMENTS_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2)
-    print("\nLogo rotation reset to 0 (back and front).")
+    save_shared(dict(DEFAULT_PLACEMENT), "DEFAULT_RESET")
+    print("\nLogo placement and rotation reset to default.")
     
     
 def find_imagetopaa():
@@ -1229,7 +1213,7 @@ class CustomHoodieGUI:
         self.add_separator(left)
         self.add_button(left, "Choose Hoodie Color", self.run_choose_color)
         self.add_button(left, "Reset To Base Texture", self.run_reset_color)
-        self.add_button(left, "Reset Logo Rotation", self.run_reset_rotation)
+        self.add_button(left, "Reset Logo Placement + Rotation", self.run_reset_rotation)
         self.add_separator(left)
         self.add_button(left, "Reset Saved Placement", self.run_reset_placement)
         self.add_button(left, "Open Mod Data Folder", lambda: self.open_folder(MOD_DATA))

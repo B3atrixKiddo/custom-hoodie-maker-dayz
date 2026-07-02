@@ -154,7 +154,7 @@ def write_config(files=None):
         lines.append(f'    class {g["classname"]} : {g["parent"]}')
         lines.append("    {")
         lines.append("        scope = 2;")
-        lines.append(f'        displayName = "{g["display"]}";')
+        lines.append(f'        displayName = "SERVER HOODIE";')
         lines.append(f'        descriptionShort = "{DESCRIPTION}";')
         lines.append(f"        itemsCargoSize[] = {{{CARGO_X}, {CARGO_Y}}};")
         lines.append("        hiddenSelectionsTextures[] =")

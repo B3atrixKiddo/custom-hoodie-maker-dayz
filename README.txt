@@ -1,4 +1,4 @@
-CUSTOM HOODIE MAKER - By BeatrixKiddo
+CUSTOM HOODIE MAKER - By B3atrixKiddo
 ----------
 
 1. Put your two transparent logos here:

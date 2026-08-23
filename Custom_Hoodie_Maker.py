@@ -157,7 +157,7 @@ def write_config(files=None):
         lines.append(f'        displayName = "SERVER HOODIE";')
         lines.append(f'        descriptionShort = "{DESCRIPTION}";')
         lines.append(f"        itemsCargoSize[] = {{{CARGO_X}, {CARGO_Y}}};")
-lines.append("        hiddenSelectionsTextures[] =")
+        lines.append("        hiddenSelectionsTextures[] =")
         lines.append("        {")
         # lines.append('            "",')
         # lines.append('            "",')

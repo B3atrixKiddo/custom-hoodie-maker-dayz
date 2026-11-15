@@ -1,4 +1,5 @@
-CUSTOM HOODIE MAKER - By B3atrixKiddo
+CUSTOM HOODIE MAKER
+
 ONLINE VERSION: https://custom-hoodie-maker-dayz.onrender.com/
 ----------
 
